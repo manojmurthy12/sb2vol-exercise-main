@@ -99,14 +99,12 @@ describe("sbv2vol test", () => {
     const aggregator = await aggregatorAccount.loadData();
     const history = await aggregatorAccount.loadHistory();
     
-    
-    let buff = aggregator.historyBuffer
     let starting_timestamp = null;
     let ending_timestamp = null;
     if(getSolanaTimestamp)
     {
       ending_timestamp = await getSolanaTimestamp() ;
-      starting_timestamp = ending_timestamp - (3600*24)
+      starting_timestamp = ending_timestamp - (3600*24*5)
     }
     if (ending_timestamp === null) {
       throw new Error("Failed to fetch block time");
@@ -116,7 +114,7 @@ describe("sbv2vol test", () => {
     if (typeof ending_timestamp !== 'number') {
         throw new Error("Block time is not a valid number");
     }
-    let interval = 3600;
+    let interval = 3600*12;
 
     const tx = await program.methods
     // .calcVol({ interval: null, starttimestamp: null, endtimestamp:null})

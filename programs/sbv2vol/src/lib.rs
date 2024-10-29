@@ -67,22 +67,19 @@ pub mod sbvol {
         while current_timestamp <= end_timestamp {
             // Fetch the value at the current timestamp
             if let Some(history_value) = history_buffer.lower_bound(current_timestamp) {
-                let curr_val: f64 = history_value.value.try_into().map_err(|_| ErrorCode::Math)?;
         
+                let curr_val: f64 = history_value.value.try_into()?;
+
                 // Calculate the price difference only if we have a previous price
                 if let Some(prev_price) = previous_price {
                     let difference = curr_val - prev_price;
                     // Avoid division if curr_val is 0 to prevent panic
                     if curr_val != 0.0 {
                         prices.push(difference / curr_val);
-                    } else {
-                        msg!("Current value is zero at timestamp: {}", current_timestamp);
-                    }
+                    } 
                 }
                 previous_price = Some(curr_val); // Update the previous price
-            } else {
-                msg!("No value found for timestamp: {}", current_timestamp);
-            }
+            } 
             current_timestamp += interval;
         }
         
@@ -92,15 +89,16 @@ pub mod sbvol {
         }
 
         // Calculate volatility
-        let volatility = calculate_standard_deviation(&prices);
+        // let volatility = calculate_standard_deviation(&prices); //faster
+        let volatility = std_deviation(&prices); //more accurate
 
         if interval == 3600*24 {
             let number_of_periods_in_a_year:f64 = 252.0;
-            let annualized_volatility = number_of_periods_in_a_year.sqrt()*volatility;
+            let annualized_volatility = number_of_periods_in_a_year.sqrt()*volatility.expect("No data in the range");
             msg!("Annualized volatility: {}", annualized_volatility);
         }
 
-        _ctx.accounts.stored_data.volatility = volatility;
+        _ctx.accounts.stored_data.volatility = volatility.expect("No data in the range");
         Ok(())
     }
 
@@ -180,7 +178,7 @@ pub enum ErrorCode {
     NotEnoughData
 }
 
-// Helper function to calculate standard deviation
+// A faster version of standard deviation
 fn calculate_standard_deviation(prices: &[f64]) -> f64 {
     let n = prices.len() as f64;
     let mut mean = 0.0;
@@ -194,4 +192,29 @@ fn calculate_standard_deviation(prices: &[f64]) -> f64 {
 
     // Variance is m2 / (n - 1), and standard deviation is the square root of variance
     (m2 / (n - 1.0)).sqrt()
+}
+
+fn mean(data: &[f64]) -> Option<f64> {
+    let sum = data.iter().sum::<f64>() as f64;
+    let count = data.len();
+
+    match count {
+        positive if positive > 0 => Some(sum / count as f64),
+        _ => None,
+    }
+}
+// accurate version of standard deviation
+fn std_deviation(data: &[f64]) -> Option<f64> {
+    match (mean(data), data.len()) {
+        (Some(data_mean), count) if count > 0 => {
+            let variance = data.iter().map(|value| {
+                let diff = data_mean - (*value as f64);
+
+                diff * diff
+            }).sum::<f64>() / count as f64;
+
+            Some(variance.sqrt())
+        },
+        _ => None
+    }
 }
