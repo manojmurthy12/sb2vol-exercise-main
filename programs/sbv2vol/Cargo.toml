@@ -1,0 +1,29 @@
+[package]
+name = "sbvol"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "sbvol"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build"]
+default = []
+
+[profile.release]
+overflow-checks = true
+
+
+[dependencies]
+anchor-lang = "0.30.1"
+bytemuck = "1.13.1"
+rust_decimal = "1.26.1"
+getrandom = { version = "0.1.14", features = ["dummy"] }
+switchboard-solana = "0.30.4"
+
