@@ -6,7 +6,6 @@ declare_id!("4TtQakHeBgTRjG85RHmWs25LK37DdmfP4PnS45Hmcgd5");
 pub mod sbvol {
 
     use core::f64;
-    use std::ptr::null;
 
     use super::*;
 
@@ -51,15 +50,25 @@ pub mod sbvol {
     pub fn calc_vol(_ctx: Context<CalcVol>, _params: CalculateVolParams) -> Result<()> {
         
         let history_buffer = AggregatorHistoryBuffer::new(&_ctx.accounts.history_buffer)?;
+
         // Determine the time range for fetching historical data
         let clock = solana_program::clock::Clock::get().unwrap();
         let end_timestamp = _params.endtimestamp.unwrap_or(clock.unix_timestamp);
+        // Set the start_timestamp from params or default to 10 days before (3600 * 24 * 10)
         let start_timestamp = _params.starttimestamp.unwrap_or(end_timestamp - (3600 * 24 * 10));
-        
-        let mut prices = Vec::new();
-        
         // Set the interval from params or default to 1 day (3600 * 24)
         let interval = _params.interval.unwrap_or(3600 * 24);
+
+
+        // Check if start_timestamp and end_timestamp satisfy the required condition
+        if end_timestamp <= start_timestamp {
+            return Err(ErrorCode::InvalidTimeStamp.into());
+        }
+        if (end_timestamp - start_timestamp) <= (2 * interval) {
+            return Err(ErrorCode::IntervalIsTooBig.into());
+        }
+        let mut prices = Vec::new();
+
         let mut previous_price: Option<f64> = None; // Use Option to avoid unnecessary initialization
         
         let mut current_timestamp = start_timestamp;
@@ -175,7 +184,11 @@ pub enum ErrorCode {
     #[msg("Mathematical operation error")]
     Math,
     #[msg("Not enough data in the range")]
-    NotEnoughData
+    NotEnoughData,
+    #[msg("Pick a smaller interval")]
+    IntervalIsTooBig,
+    #[msg("Start timestamp can't be bigger or equal to End timestamp")]
+    InvalidTimeStamp
 }
 
 // A faster version of standard deviation
